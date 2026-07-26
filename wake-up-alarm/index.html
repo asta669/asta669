@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Wake Up! — The alarm that makes you get out of bed</title>
+<style>
+  :root {
+    --bg: #0b1021;
+    --bg2: #141b3a;
+    --card: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.12);
+    --text: #eef1ff;
+    --muted: #99a2c9;
+    --accent: #6c8cff;
+    --accent2: #ff7a9c;
+    --good: #4be0a2;
+    --warn: #ffcf5c;
+    --danger: #ff5c6c;
+    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 800px at 80% -10%, #23306b 0%, transparent 55%),
+      radial-gradient(900px 700px at -10% 110%, #3a1c4d 0%, transparent 55%),
+      linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  .wrap { width: 100%; max-width: 460px; }
+
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 1.5rem; letter-spacing: 0.5px; }
+  header .logo { font-size: 2.4rem; line-height: 1; }
+  header p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+  .clock {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: clamp(3.2rem, 18vw, 5rem);
+    letter-spacing: 2px;
+    line-height: 1;
+    margin: 8px 0 2px;
+    text-shadow: 0 6px 30px rgba(108,140,255,0.35);
+  }
+  .clock .sec { font-size: 0.4em; color: var(--muted); vertical-align: super; }
+  .date { text-align: center; color: var(--muted); margin-bottom: 22px; font-size: 0.95rem; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+  }
+  .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 14px; }
+
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+  input[type="time"], select {
+    width: 100%;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.05rem;
+    padding: 12px 14px;
+    border-radius: 12px;
+    outline: none;
+  }
+  input[type="time"] { font-size: 1.8rem; text-align: center; font-weight: 600; }
+  select:focus, input:focus { border-color: var(--accent); }
+
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+
+  .field { margin-bottom: 14px; }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .toggle-row span { font-size: 0.95rem; }
+  .switch { position: relative; width: 52px; height: 30px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; cursor: pointer;
+    background: rgba(255,255,255,0.15); border-radius: 999px; transition: 0.25s;
+  }
+  .slider::before {
+    content: ""; position: absolute; height: 24px; width: 24px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: 0.25s;
+  }
+  .switch input:checked + .slider { background: var(--good); }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 15px 18px;
+    transition: transform 0.08s ease, filter 0.2s ease;
+    color: #fff;
+  }
+  button:active { transform: scale(0.97); }
+  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), #8a6cff); box-shadow: 0 10px 30px rgba(108,140,255,0.4); }
+  .btn-danger { background: linear-gradient(135deg, var(--danger), #ff8a5c); }
+  .btn-ghost { background: rgba(255,255,255,0.08); border: 1px solid var(--border); }
+  .btn-good { background: linear-gradient(135deg, var(--good), #3ec6c0); color:#04231a; }
+
+  .status {
+    text-align: center; font-size: 0.95rem; padding: 12px; border-radius: 12px;
+    background: rgba(75,224,162,0.1); border: 1px solid rgba(75,224,162,0.25); color: var(--good);
+  }
+  .status.off { background: rgba(255,255,255,0.05); border-color: var(--border); color: var(--muted); }
+
+  .hint { color: var(--muted); font-size: 0.82rem; line-height: 1.45; margin-top: 10px; }
+
+  /* Ring / dismiss overlay */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+    background: radial-gradient(circle at 50% 30%, #ff5c6c 0%, #7a1030 60%, #2a0512 100%);
+    animation: flash 1s infinite alternate;
+  }
+  .overlay.show { display: flex; }
+  @keyframes flash { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+  .overlay .big { font-size: 3rem; margin-bottom: 6px; }
+  .overlay h2 { font-size: 1.6rem; margin-bottom: 4px; letter-spacing: 1px; }
+  .overlay p.sub { color: rgba(255,255,255,0.85); margin-bottom: 24px; }
+
+  .challenge {
+    background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 18px; padding: 22px; width: 100%; max-width: 360px;
+  }
+  .challenge .q { font-size: 2rem; font-weight: 700; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .challenge .prog { font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-bottom: 16px; }
+  .challenge input {
+    width: 100%; text-align: center; font-size: 2rem; font-weight: 700;
+    padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.3); color: #fff; outline: none; margin-bottom: 14px;
+  }
+  .challenge .keys { display: flex; gap: 10px; }
+  .challenge .keys button { flex: 1; }
+  .task-text { font-size: 1.4rem; font-weight: 600; margin-bottom: 16px; min-height: 1.4em; }
+  .snooze-row { margin-top: 18px; }
+  .snooze-btn { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3); font-size: 0.9rem; padding: 12px 20px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 8px; line-height: 1.5; }
+
+  .badge { display:inline-block; background: rgba(108,140,255,0.15); border:1px solid rgba(108,140,255,0.3); color: var(--accent); padding: 3px 9px; border-radius: 999px; font-size: 0.72rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⏰</div>
+    <h1>Wake Up!</h1>
+    <p>The alarm that won't quit until you're really awake.</p>
+  </header>
+
+  <div class="clock" id="clock">--:--<span class="sec" id="sec"></span></div>
+  <div class="date" id="date"></div>
+
+  <div class="card">
+    <h2>Set your alarm</h2>
+    <div class="field">
+      <label for="time">Wake me at</label>
+      <input type="time" id="time" value="07:00" />
+    </div>
+
+    <div class="field">
+      <label for="mode">To turn it off, I must…</label>
+      <select id="mode">
+        <option value="math">Solve math problems 🧮</option>
+        <option value="type">Type a phrase correctly ⌨️</option>
+        <option value="memory">Repeat a number sequence 🧠</option>
+        <option value="tap">Tap the button 30 times 👆</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="difficulty">Difficulty</label>
+      <select id="difficulty">
+        <option value="1">Easy — 1 challenge</option>
+        <option value="3" selected>Normal — 3 challenges</option>
+        <option value="5">Brutal — 5 challenges</option>
+      </select>
+    </div>
+
+    <div class="toggle-row">
+      <span>Gradual volume (fade in) 🔊</span>
+      <label class="switch"><input type="checkbox" id="fade" checked /><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row" style="margin-bottom:6px;">
+      <span>Allow snooze (5 min)</span>
+      <label class="switch"><input type="checkbox" id="allowSnooze" checked /><span class="slider"></span></label>
+    </div>
+
+    <button class="btn-primary" id="setBtn" style="margin-top:14px;">Set alarm</button>
+    <p class="hint" id="hint">Tip: keep this tab open and your screen awake. Try the <b>Test</b> button below to preview the alarm.</p>
+  </div>
+
+  <div class="card">
+    <div class="status off" id="status">No alarm set</div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn-ghost" id="testBtn">▶︎ Test alarm now</button>
+      <button class="btn-danger" id="cancelBtn" style="display:none;">Cancel alarm</button>
+    </div>
+  </div>
+
+  <footer>
+    Works offline · No account · Nothing leaves your device.<br>
+    <span class="badge">built for @asta669</span>
+  </footer>
+</div>
+
+<!-- ALARM OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="big">🌅</div>
+  <h2 id="ovTitle">WAKE UP!</h2>
+  <p class="sub" id="ovSub">Complete the challenge to stop the alarm</p>
+
+  <div class="challenge" id="challengeBox">
+    <div class="prog" id="prog"></div>
+    <!-- math / memory question -->
+    <div class="q" id="qText" style="display:none;"></div>
+    <!-- type task -->
+    <div class="task-text" id="taskText" style="display:none;"></div>
+    <input id="answer" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="…" />
+    <div class="keys">
+      <button class="btn-good" id="submitBtn">Submit</button>
+    </div>
+    <!-- tap challenge -->
+    <div id="tapArea" style="display:none;">
+      <button class="btn-good" id="tapBtn" style="width:100%; font-size:1.3rem; padding:22px;">TAP! (<span id="tapCount">0</span>/30)</button>
+    </div>
+  </div>
+
+  <div class="snooze-row" id="snoozeRow">
+    <button class="snooze-btn" id="snoozeBtn">😴 Snooze 5 min</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Elements ----------
+  const $ = (id) => document.getElementById(id);
+  const clockEl = $("clock"), secEl = $("sec"), dateEl = $("date");
+  const timeEl = $("time"), modeEl = $("mode"), diffEl = $("difficulty");
+  const fadeEl = $("fade"), snoozeAllowEl = $("allowSnooze");
+  const setBtn = $("setBtn"), testBtn = $("testBtn"), cancelBtn = $("cancelBtn");
+  const statusEl = $("status"), hintEl = $("hint");
+  const overlay = $("overlay"), ovTitle = $("ovTitle");
+  const progEl = $("prog"), qText = $("qText"), taskText = $("taskText");
+  const answerEl = $("answer"), submitBtn = $("submitBtn");
+  const tapArea = $("tapArea"), tapBtn = $("tapBtn"), tapCountEl = $("tapCount");
+  const snoozeRow = $("snoozeRow"), snoozeBtn = $("snoozeBtn");
+
+  const STORE = "wakeup.settings.v1";
+
+  // ---------- Settings persistence ----------
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE) || "{}");
+      if (s.time) timeEl.value = s.time;
+      if (s.mode) modeEl.value = s.mode;
+      if (s.difficulty) diffEl.value = s.difficulty;
+      if (typeof s.fade === "boolean") fadeEl.checked = s.fade;
+      if (typeof s.snooze === "boolean") snoozeAllowEl.checked = s.snooze;
+    } catch (e) {}
+  }
+  function saveSettings() {
+    localStorage.setItem(STORE, JSON.stringify({
+      time: timeEl.value, mode: modeEl.value, difficulty: diffEl.value,
+      fade: fadeEl.checked, snooze: snoozeAllowEl.checked,
+    }));
+  }
+  loadSettings();
+
+  // ---------- Live clock ----------
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function tick() {
+    const now = new Date();
+    clockEl.firstChild.nodeValue = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    secEl.textContent = pad(now.getSeconds());
+    dateEl.textContent = now.toLocaleDateString(undefined,
+      { weekday: "long", month: "long", day: "numeric" });
+    checkAlarm(now);
+  }
+
+  // ---------- Alarm scheduling ----------
+  let alarmTime = null;      // "HH:MM"
+  let alarmActive = false;   // currently ringing
+  let lastFired = "";        // guard so it fires once per minute
+
+  function nextAlarmDate(hhmm) {
+    const [h, m] = hhmm.split(":").map(Number);
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  function updateStatus() {
+    if (alarmTime) {
+      const d = nextAlarmDate(alarmTime);
+      const mins = Math.round((d - new Date()) / 60000);
+      const hrs = Math.floor(mins / 60), rem = mins % 60;
+      let inTxt = hrs > 0 ? `${hrs}h ${rem}m` : `${rem}m`;
+      statusEl.className = "status";
+      statusEl.innerHTML = `⏰ Alarm set for <b>${alarmTime}</b> · rings in ${inTxt}`;
+      setBtn.textContent = "Update alarm";
+      cancelBtn.style.display = "block";
+    } else {
+      statusEl.className = "status off";
+      statusEl.textContent = "No alarm set";
+      setBtn.textContent = "Set alarm";
+      cancelBtn.style.display = "none";
+    }
+  }
+
+  function checkAlarm(now) {
+    if (!alarmTime || alarmActive) return;
+    const cur = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    if (cur === alarmTime && lastFired !== cur) {
+      lastFired = cur;
+      startRinging();
+    }
+    if (cur !== alarmTime) {
+      if (now.getSeconds() % 30 === 0) updateStatus();
+    }
+  }
+
+  setBtn.addEventListener("click", () => {
+    alarmTime = timeEl.value;
+    lastFired = "";
+    saveSettings();
+    updateStatus();
+    hintEl.innerHTML = `✅ Alarm set for <b>${alarmTime}</b>. Keep this tab open — you can lock your phone but don't close the tab.`;
+    // Unlock audio on this user gesture so it can play later on mobile.
+    primeAudio();
+  });
+
+  cancelBtn.addEventListener("click", () => {
+    alarmTime = null;
+    updateStatus();
+    hintEl.textContent = "Alarm cancelled.";
+  });
+
+  // ---------- Web Audio alarm (no files, works offline) ----------
+  let audioCtx = null, oscA = null, oscB = null, gainNode = null, lfo = null, warble = null;
+  let fadeTimer = null;
+
+  function primeAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function startSound() {
+    primeAudio();
+    if (!audioCtx) return;
+    stopSound();
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = fadeEl.checked ? 0.0001 : 0.35;
+    gainNode.connect(audioCtx.destination);
+
+    // Two detuned oscillators = harsher, more attention-grabbing
+    oscA = audioCtx.createOscillator();
+    oscB = audioCtx.createOscillator();
+    oscA.type = "sawtooth"; oscB.type = "square";
+    oscA.frequency.value = 660; oscB.frequency.value = 990;
+
+    // LFO warble to make it pulse/beep
+    warble = audioCtx.createGain();
+    warble.gain.value = 0.5;
+    lfo = audioCtx.createOscillator();
+    lfo.type = "square";
+    lfo.frequency.value = 4.5; // beeps per second
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 0.5;
+    lfo.connect(lfoGain);
+    lfoGain.connect(warble.gain);
+
+    oscA.connect(warble); oscB.connect(warble);
+    warble.connect(gainNode);
+
+    oscA.start(); oscB.start(); lfo.start();
+
+    if (fadeEl.checked) {
+      let vol = 0.0001;
+      fadeTimer = setInterval(() => {
+        vol = Math.min(0.4, vol + 0.02);
+        if (gainNode) gainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.3);
+        if (vol >= 0.4) { clearInterval(fadeTimer); fadeTimer = null; }
+      }, 700);
+    }
+  }
+
+  function stopSound() {
+    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    [oscA, oscB, lfo].forEach((o) => { try { o && o.stop(); } catch (e) {} });
+    oscA = oscB = lfo = null;
+    if (gainNode) { try { gainNode.disconnect(); } catch (e) {} gainNode = null; }
+  }
+
+  // Vibrate on mobile if supported
+  let vibrateTimer = null;
+  function startVibrate() {
+    if (!("vibrate" in navigator)) return;
+    vibrateTimer = setInterval(() => navigator.vibrate([400, 200, 400]), 1200);
+  }
+  function stopVibrate() {
+    if (vibrateTimer) { clearInterval(vibrateTimer); vibrateTimer = null; }
+    if ("vibrate" in navigator) navigator.vibrate(0);
+  }
+
+  // ---------- Challenges ----------
+  let remaining = 0;      // challenges left
+  let currentAnswer = ""; // expected answer (string)
+  let tapCount = 0;
+
+  const PHRASES = [
+    "i am awake and ready",
+    "today is going to be great",
+    "rise and shine sleepyhead",
+    "out of bed right now",
+    "no more snoozing today",
+    "good morning sunshine",
+  ];
+
+  function startRinging(isTest) {
+    alarmActive = true;
+    overlay.classList.add("show");
+    ovTitle.textContent = isTest ? "TEST ALARM" : "WAKE UP!";
+    remaining = isTest ? 1 : parseInt(diffEl.value, 10);
+    snoozeRow.style.display = snoozeAllowEl.checked && !isTest ? "block" : "none";
+    startSound();
+    startVibrate();
+    nextChallenge();
+  }
+
+  function endRinging() {
+    alarmActive = false;
+    overlay.classList.remove("show");
+    stopSound();
+    stopVibrate();
+    // one-shot alarm: clear it after success
+    if (alarmTime) { /* keep for tomorrow? we clear to avoid surprise */ }
+    alarmTime = null;
+    updateStatus();
+    hintEl.textContent = "☀️ Good morning! Alarm dismissed. Set a new one whenever you like.";
+  }
+
+  function nextChallenge() {
+    // reset views
+    qText.style.display = "none";
+    taskText.style.display = "none";
+    answerEl.style.display = "none";
+    submitBtn.parentElement.style.display = "none";
+    tapArea.style.display = "none";
+    answerEl.value = "";
+
+    if (remaining <= 0) { endRinging(); return; }
+    progEl.textContent = `Challenge ${parseInt(ovTitle.textContent === "TEST ALARM" ? 1 : diffEl.value,10) - remaining + 1} of ${ovTitle.textContent === "TEST ALARM" ? 1 : diffEl.value}`;
+
+    const mode = modeEl.value;
+    if (mode === "math") setupMath();
+    else if (mode === "type") setupType();
+    else if (mode === "memory") setupMemory();
+    else if (mode === "tap") setupTap();
+  }
+
+  function showInput(numeric) {
+    answerEl.style.display = "block";
+    submitBtn.parentElement.style.display = "flex";
+    answerEl.inputMode = numeric ? "numeric" : "text";
+    answerEl.placeholder = numeric ? "answer" : "type here";
+    setTimeout(() => answerEl.focus(), 50);
+  }
+
+  function setupMath() {
+    // harder as difficulty rises
+    const hard = parseInt(diffEl.value, 10) >= 5;
+    const a = 2 + Math.floor(Math.random() * (hard ? 40 : 12));
+    const b = 2 + Math.floor(Math.random() * (hard ? 40 : 12));
+    const ops = hard ? ["+", "-", "×"] : ["+", "-"];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let res;
+    if (op === "+") res = a + b;
+    else if (op === "-") res = a - b;
+    else res = a * b;
+    qText.textContent = `${a} ${op} ${b} = ?`;
+    qText.style.display = "block";
+    currentAnswer = String(res);
+    showInput(true);
+  }
+
+  function setupType() {
+    const p = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    taskText.innerHTML = `Type exactly:<br><span style="color:#ffd; font-style:italic;">“${p}”</span>`;
+    taskText.style.display = "block";
+    currentAnswer = p;
+    showInput(false);
+  }
+
+  function setupMemory() {
+    const len = parseInt(diffEl.value, 10) >= 5 ? 6 : 4;
+    let seq = "";
+    for (let i = 0; i < len; i++) seq += Math.floor(Math.random() * 10);
+    currentAnswer = seq;
+    qText.textContent = seq;
+    qText.style.display = "block";
+    taskText.innerHTML = "Memorize the number…";
+    taskText.style.display = "block";
+    showInput(true);
+    answerEl.style.display = "none";
+    submitBtn.parentElement.style.display = "none";
+    // hide after a moment, then ask to type it
+    const showMs = 1200 + len * 500;
+    setTimeout(() => {
+      qText.style.display = "none";
+      taskText.innerHTML = "Now type the number you saw:";
+      showInput(true);
+    }, showMs);
+  }
+
+  function setupTap() {
+    tapCount = 0;
+    tapCountEl.textContent = "0";
+    tapArea.style.display = "block";
+  }
+
+  tapBtn.addEventListener("click", () => {
+    tapCount++;
+    tapCountEl.textContent = String(tapCount);
+    if (tapCount >= 30) { remaining--; nextChallenge(); }
+  });
+
+  function submitAnswer() {
+    const val = answerEl.value.trim().toLowerCase();
+    const expected = String(currentAnswer).trim().toLowerCase();
+    if (val === expected && val !== "") {
+      remaining--;
+      flash(false);
+      nextChallenge();
+    } else {
+      flash(true);
+      answerEl.value = "";
+      answerEl.focus();
+    }
+  }
+
+  function flash(bad) {
+    answerEl.style.borderColor = bad ? "#ff5c6c" : "#4be0a2";
+    setTimeout(() => { answerEl.style.borderColor = "rgba(255,255,255,0.3)"; }, 400);
+  }
+
+  submitBtn.addEventListener("click", submitAnswer);
+  answerEl.addEventListener("keydown", (e) => { if (e.key === "Enter") submitAnswer(); });
+
+  // ---------- Snooze ----------
+  snoozeBtn.addEventListener("click", () => {
+    alarmActive = false;
+    overlay.classList.remove("show");
+    stopSound();
+    stopVibrate();
+    const d = new Date(Date.now() + 5 * 60000);
+    alarmTime = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    lastFired = "";
+    updateStatus();
+    hintEl.innerHTML = `😴 Snoozing… next ring at <b>${alarmTime}</b>.`;
+  });
+
+  // ---------- Test ----------
+  testBtn.addEventListener("click", () => { primeAudio(); startRinging(true); });
+
+  // ---------- Keep-awake helper (best effort) ----------
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") { requestWakeLock(); if (audioCtx && audioCtx.state === "suspended" && alarmActive) audioCtx.resume(); }
+  });
+
+  // ---------- Boot ----------
+  tick();
+  setInterval(tick, 1000);
+  updateStatus();
+  ["change"].forEach(ev => [timeEl, modeEl, diffEl, fadeEl, snoozeAllowEl].forEach(el => el.addEventListener(ev, saveSettings)));
+})();
+</script>
+</body>
+</html>
