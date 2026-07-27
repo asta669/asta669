@@ -91,6 +91,10 @@ class AlarmActivity : AppCompatActivity() {
 
     private fun dismiss() {
         stopAlarmService()
+        // Hand off to Jarvis for the spoken morning brief, if enabled.
+        if (Prefs.isJarvisOn(this)) {
+            startActivity(Intent(this, JarvisActivity::class.java))
+        }
         finish()
     }
 

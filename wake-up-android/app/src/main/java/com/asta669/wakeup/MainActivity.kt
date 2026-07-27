@@ -60,6 +60,9 @@ class MainActivity : AppCompatActivity() {
         setBtn.setOnClickListener { onSetAlarm() }
         cancelBtn.setOnClickListener { onCancelAlarm() }
         findViewById<Button>(R.id.testBtn).setOnClickListener { previewAlarm() }
+        findViewById<Button>(R.id.jarvisBtn).setOnClickListener {
+            startActivity(Intent(this, JarvisSettingsActivity::class.java))
+        }
 
         refreshStatus()
     }

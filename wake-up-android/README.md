@@ -10,6 +10,26 @@ do the things a browser can't:
 - 😴 Optional **5-minute snooze**.
 - 🔁 **Repeats daily** and **re-arms itself after a reboot**.
 - 📳 Vibrates, holds a wake-lock, works fully offline.
+- 🤵 **Jarvis** — an optional spoken morning brief right after you dismiss the alarm.
+
+## 🤵 Jarvis — the spoken morning brief
+
+After you turn off the alarm, Jarvis greets you out loud ("Bonjour Monsieur…"),
+reads **today's calendar events**, and encourages your **morning routine**
+(footing, reading, writing on Substack…).
+
+- 🧠 **Free AI brain** via Google **Gemini** (free API key, no credit card).
+- 📅 Reads **today's Google Calendar** events already synced on your phone — no login, no cost.
+- 🔊 Speaks with Android's built-in **French** text-to-speech.
+- 🌙 Works **offline too**: with no key (or no network) it speaks a built-in brief from your routine + calendar.
+
+### Set it up (all free)
+1. Get a **free Gemini API key**: open **aistudio.google.com/apikey**, sign in with Google, **Create API key**, copy it (starts with `AIza…`).
+2. In the app, tap **"🤵 Jarvis — briefing parlé"** → paste the key, set your name and routine, tick **"Activer Jarvis après l'alarme"** and **"Lire mes rendez-vous"** (allow calendar access), then **Enregistrer**.
+3. Tap **"▶ Tester Jarvis"** to hear it now.
+4. Make sure a **French voice** is installed: Android *Settings → Languages → Text-to-speech → French*.
+
+> The Gemini free tier is far more than enough for one brief a day. Your key is stored only on your phone — don't share the APK if you've entered your key.
 
 ## 📥 Get the app on your phone — two ways
 
