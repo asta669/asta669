@@ -121,12 +121,14 @@
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 7px; letter-spacing: 0.4px; }
   .field { margin-bottom: 15px; }
 
-  input[type="time"], select {
+  input[type="time"], input[type="text"], input[type="password"], textarea, select {
     width: 100%; background: rgba(4, 9, 14, 0.55); border: 1px solid rgba(139, 233, 255, 0.14);
     color: var(--ice); font-family: var(--font); font-size: 16px; padding: 13px 14px; border-radius: 15px;
     outline: none; transition: border-color .2s, box-shadow .2s;
   }
   input[type="time"] { font-size: 26px; font-weight: 300; text-align: center; letter-spacing: 1px; }
+  textarea { resize: vertical; line-height: 1.5; }
+  input::placeholder, textarea::placeholder { color: rgba(143, 166, 187, 0.6); }
   select:focus, input:focus { border-color: var(--frost); box-shadow: 0 0 0 3px rgba(139, 233, 255, 0.18); }
   select option { background: var(--panel-solid); color: var(--ice); }
 
@@ -217,6 +219,20 @@
   .snooze-btn { background: rgba(4,9,14,0.5); border: 1px solid var(--glass-border); color: var(--ice);
     font-size: 13px; padding: 12px 22px; }
 
+  /* Jarvis brief — calm glass, no pulse */
+  .overlay.jarvis {
+    background:
+      radial-gradient(120% 80% at 50% 15%, rgba(59,182,246,0.22) 0%, transparent 58%),
+      radial-gradient(100% 100% at 50% 120%, rgba(31,95,168,0.28) 0%, transparent 62%),
+      #04070c;
+  }
+  .overlay.jarvis.show { animation: none; }
+  .overlay.jarvis .big { animation: none; font-size: 50px; }
+  .brief {
+    font-size: 17px; line-height: 1.65; color: var(--ice); text-align: left;
+    white-space: pre-wrap; max-height: 46vh; overflow-y: auto;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .aurora, .overlay.show, .overlay .big { animation: none !important; }
     .btn-primary::after { transition: none; }
@@ -281,6 +297,32 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>🤵 Jarvis — briefing parlé</h2>
+    <div class="toggle-row">
+      <span>Me briefer après l'alarme</span>
+      <label class="switch"><input type="checkbox" id="jarvisOn" checked /><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <label for="jName">Comment m'appeler</label>
+      <input type="text" id="jName" placeholder="Monsieur" />
+    </div>
+    <div class="field">
+      <label for="jRoutine">Ma routine du matin</label>
+      <textarea id="jRoutine" rows="2" placeholder="20 min de footing, lire 10 pages, écrire sur Substack"></textarea>
+    </div>
+    <div class="field">
+      <label for="jTasks">Mes tâches du jour — une par ligne</label>
+      <textarea id="jTasks" rows="3" placeholder="Appeler le dentiste&#10;Finir le rapport"></textarea>
+    </div>
+    <div class="field">
+      <label for="jKey">Clé Gemini — optionnelle et gratuite</label>
+      <input type="password" id="jKey" placeholder="AIza…   (vide = cerveau local)" />
+    </div>
+    <button class="btn-ghost" id="briefBtn" style="width:100%;">🔊 Briefe-moi maintenant</button>
+    <p class="hint" id="jHint">Sans clé, Jarvis parle quand même — il compose lui-même le briefing, hors-ligne.</p>
+  </div>
+
   <div class="card" id="installCard" style="display:none;">
     <h2>Installer comme app 📲</h2>
     <button class="btn-good" id="installBtn" style="width:100%;">Ajouter à l'écran d'accueil</button>
@@ -309,6 +351,20 @@
   <div class="snooze-row" id="snoozeRow"><button class="snooze-btn" id="snoozeBtn">😴 Snooze 5 min</button></div>
 </div>
 
+<!-- Jarvis brief -->
+<div class="overlay jarvis" id="jarvisOverlay">
+  <div class="big">🤵</div>
+  <h2>JARVIS</h2>
+  <p class="sub">Votre briefing du matin</p>
+  <div class="challenge">
+    <p class="brief" id="briefText">Jarvis prépare votre briefing…</p>
+    <div class="keys" style="margin-top:20px;">
+      <button class="btn-ghost" id="repeatBtn">🔊 Répéter</button>
+      <button class="btn-good" id="briefDoneBtn">Bonne journée ☀️</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -323,7 +379,12 @@
   var answerEl = $("answer"), submitBtn = $("submitBtn"), keysRow = $("keysRow");
   var tapArea = $("tapArea"), tapBtn = $("tapBtn"), tapCountEl = $("tapCount");
   var snoozeRow = $("snoozeRow"), snoozeBtn = $("snoozeBtn");
+  var jarvisOn = $("jarvisOn"), jName = $("jName"), jRoutine = $("jRoutine"),
+      jTasks = $("jTasks"), jKey = $("jKey"), briefBtn = $("briefBtn"), jHint = $("jHint");
+  var jarvisOverlay = $("jarvisOverlay"), briefText = $("briefText"),
+      repeatBtn = $("repeatBtn"), briefDoneBtn = $("briefDoneBtn");
   var STORE = "wakeup.settings.v1";
+  var JSTORE = "wakeup.jarvis.v1";
 
   function loadSettings() {
     try {
@@ -342,6 +403,24 @@
     }));
   }
   loadSettings();
+
+  function loadJarvis() {
+    try {
+      var j = JSON.parse(localStorage.getItem(JSTORE) || "{}");
+      if (typeof j.on === "boolean") jarvisOn.checked = j.on;
+      if (j.name) jName.value = j.name;
+      if (j.routine) jRoutine.value = j.routine;
+      if (j.tasks) jTasks.value = j.tasks;
+      if (j.key) jKey.value = j.key;
+    } catch (e) {}
+  }
+  function saveJarvis() {
+    localStorage.setItem(JSTORE, JSON.stringify({
+      on: jarvisOn.checked, name: jName.value, routine: jRoutine.value,
+      tasks: jTasks.value, key: jKey.value
+    }));
+  }
+  loadJarvis();
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function tick() {
@@ -464,7 +543,122 @@
     alarmActive = false; overlay.classList.remove("show"); stopSound(); stopVibrate();
     alarmTime = null; updateStatus();
     hintEl.textContent = "☀️ Bonjour ! Alarme désactivée. Programme-en une nouvelle quand tu veux.";
+    if (jarvisOn.checked) runJarvis();
   }
+
+  /* ---- Jarvis: the spoken morning brief ---- */
+  var currentBrief = "";
+
+  function localBrief() {
+    var now = new Date();
+    var name = jName.value.trim() || "Monsieur";
+    var time = now.getHours() + "h" + pad(now.getMinutes());
+    var day = now.toLocaleDateString("fr-FR", { weekday: "long" });
+    var routine = jRoutine.value.trim();
+    var tasks = jTasks.value.split("\n").map(function (t) { return t.trim(); })
+      .filter(function (t) { return t.length; });
+
+    var s = "Bonjour " + name + ". Il est " + time + ", nous sommes " + day + ". ";
+    if (tasks.length) {
+      s += "Au programme aujourd'hui : " + tasks.join(", ") + ". ";
+    } else {
+      s += "Aucune tâche notée aujourd'hui — la journée est à vous. ";
+    }
+    if (routine) s += "N'oubliez pas votre routine : " + routine + ". ";
+    var closings = [
+      "Debout, la journée vous attend. Excellente journée.",
+      "Une grande inspiration, et lancez-vous. Belle journée à vous.",
+      "Vous êtes prêt. Faites-en une journée mémorable.",
+      "Un pas après l'autre, et tout ira bien. Bonne journée."
+    ];
+    return s + closings[now.getDate() % closings.length];
+  }
+
+  function jarvisPrompt() {
+    var name = jName.value.trim() || "Monsieur";
+    var now = new Date();
+    var tasks = jTasks.value.split("\n").map(function (t) { return t.trim(); })
+      .filter(function (t) { return t.length; });
+    return "Tu es Jarvis, l'assistant personnel de " + name + ". Parle en français, avec élégance et " +
+      "bienveillance, en vouvoyant. Rédige un briefing matinal court (4 à 6 phrases), motivant, à lire " +
+      "à voix haute : pas de listes, pas d'emojis, un ton naturel et oral.\n\n" +
+      "Heure : " + now.getHours() + "h" + pad(now.getMinutes()) + "\n" +
+      "Jour : " + now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) + "\n" +
+      "Tâches du jour : " + (tasks.length ? tasks.join(", ") : "aucune") + "\n" +
+      "Routine à encourager : " + (jRoutine.value.trim() || "aucune") + "\n\n" +
+      "Salue " + name + ", rappelle l'heure et le jour, mentionne les tâches, encourage la routine, " +
+      "et termine par une phrase motivante.";
+  }
+
+  function runJarvis() {
+    saveJarvis();
+    jarvisOverlay.classList.add("show");
+    currentBrief = "";
+    briefText.textContent = "Jarvis prépare votre briefing…";
+
+    var key = jKey.value.trim();
+    if (!key) { showBrief(localBrief()); return; }
+
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+      "gemini-2.0-flash:generateContent?key=" + encodeURIComponent(key);
+
+    var done = false;
+    var timer = setTimeout(function () {
+      if (!done) { done = true; showBrief(localBrief()); }
+    }, 12000);
+
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: jarvisPrompt() }] }] })
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (data) {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        var txt = "";
+        try { txt = data.candidates[0].content.parts[0].text.trim(); } catch (e) {}
+        showBrief(txt || localBrief());
+      })
+      .catch(function () {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        showBrief(localBrief());
+      });
+  }
+
+  function showBrief(text) {
+    currentBrief = text;
+    briefText.textContent = text;
+    speak(text);
+  }
+
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "fr-FR"; u.rate = 0.98; u.pitch = 1.0;
+      var voices = window.speechSynthesis.getVoices();
+      for (var i = 0; i < voices.length; i++) {
+        if (/fr[-_]/i.test(voices[i].lang)) { u.voice = voices[i]; break; }
+      }
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function stopSpeaking() { try { window.speechSynthesis.cancel(); } catch (e) {} }
+
+  briefBtn.addEventListener("click", function () { runJarvis(); });
+  repeatBtn.addEventListener("click", function () { if (currentBrief) speak(currentBrief); });
+  briefDoneBtn.addEventListener("click", function () {
+    stopSpeaking(); jarvisOverlay.classList.remove("show");
+  });
+  [jarvisOn, jName, jRoutine, jTasks, jKey].forEach(function (el) {
+    el.addEventListener("change", saveJarvis);
+  });
+  // Voice list loads asynchronously in some browsers.
+  if ("speechSynthesis" in window) { window.speechSynthesis.onvoiceschanged = function () {}; }
   function nextChallenge() {
     qText.style.display = "none"; taskText.style.display = "none";
     answerEl.style.display = "none"; keysRow.style.display = "none"; tapArea.style.display = "none";
@@ -525,7 +719,7 @@
   answerEl.addEventListener("keydown", function (e) { if (e.key === "Enter") submitAnswer(); });
 
   snoozeBtn.addEventListener("click", function () {
-    alarmActive = false; overlay.classList.remove("show"); stopSound(); stopVibrate();
+    alarmActive = false; overlay.classList.remove("show"); stopSound(); stopVibrate(); stopSpeaking();
     var d = new Date(Date.now() + 5 * 60000);
     alarmTime = pad(d.getHours()) + ":" + pad(d.getMinutes()); lastFired = ""; updateStatus();
     hintEl.innerHTML = "😴 Snooze… prochaine sonnerie à <b>" + alarmTime + "</b>.";
