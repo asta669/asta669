@@ -390,12 +390,18 @@
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
   }
 
-  function startSound() {
-    primeAudio();
+  const MAX_VOL = 0.9;          // loud, and constantly re-asserted so it can't be turned down in-app
+  let soundShouldPlay = false;  // true the whole time the alarm is meant to be blaring
+  let watchdogTimer = null;
+  let fadingIn = false;
+
+  // Build the audio graph and start playing. Called on start and by the
+  // watchdog whenever the browser/OS kills the sound.
+  function buildAndPlay() {
     if (!audioCtx) return;
-    stopSound();
+    stopNodes();
     gainNode = audioCtx.createGain();
-    gainNode.gain.value = fadeEl.checked ? 0.0001 : 0.35;
+    gainNode.gain.value = fadeEl.checked ? 0.0001 : MAX_VOL;
     gainNode.connect(audioCtx.destination);
 
     // Two detuned oscillators = harsher, more attention-grabbing
@@ -421,20 +427,52 @@
     oscA.start(); oscB.start(); lfo.start();
 
     if (fadeEl.checked) {
+      fadingIn = true;
       let vol = 0.0001;
       fadeTimer = setInterval(() => {
-        vol = Math.min(0.4, vol + 0.02);
+        vol = Math.min(MAX_VOL, vol + 0.05);
         if (gainNode) gainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.3);
-        if (vol >= 0.4) { clearInterval(fadeTimer); fadeTimer = null; }
+        if (vol >= MAX_VOL) { clearInterval(fadeTimer); fadeTimer = null; fadingIn = false; }
       }, 700);
     }
   }
 
-  function stopSound() {
+  function startSound() {
+    primeAudio();
+    if (!audioCtx) return;
+    soundShouldPlay = true;
+    buildAndPlay();
+    // Watchdog: refuse to be silenced. A web page can't override the phone's
+    // physical volume buttons, but it CAN fight every soft attempt to quiet it —
+    // if the audio is muted, suspended, backgrounded, or interrupted, we resume
+    // it and slam the volume back to max. (Not applied during a gentle fade-in.)
+    if (!watchdogTimer) {
+      watchdogTimer = setInterval(() => {
+        if (!soundShouldPlay) return;
+        if (!audioCtx) primeAudio();
+        if (audioCtx && audioCtx.state === "suspended") { try { audioCtx.resume(); } catch (e) {} }
+        if (!audioCtx || !oscA) { buildAndPlay(); return; }
+        if (!fadingIn && gainNode) {
+          try { gainNode.gain.setTargetAtTime(MAX_VOL, audioCtx.currentTime, 0.05); } catch (e) {}
+        }
+      }, 500);
+    }
+  }
+
+  // Tear down the audio nodes (used internally; does NOT stop the watchdog).
+  function stopNodes() {
     if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    fadingIn = false;
     [oscA, oscB, lfo].forEach((o) => { try { o && o.stop(); } catch (e) {} });
     oscA = oscB = lfo = null;
     if (gainNode) { try { gainNode.disconnect(); } catch (e) {} gainNode = null; }
+  }
+
+  // Full stop — only when the alarm is actually dismissed or snoozed.
+  function stopSound() {
+    soundShouldPlay = false;
+    if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+    stopNodes();
   }
 
   // Vibrate on mobile if supported
