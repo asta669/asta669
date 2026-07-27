@@ -7,6 +7,9 @@ on:
       - '.github/workflows/android.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,9 +37,22 @@ jobs:
         working-directory: wake-up-android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Rename APK
+        run: cp wake-up-android/app/build/outputs/apk/debug/app-debug.apk WakeUp.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: WakeUp-debug-apk
-          path: wake-up-android/app/build/outputs/apk/debug/app-debug.apk
+          path: WakeUp.apk
           if-no-files-found: error
+
+      - name: Publish APK to a downloadable Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-apk
+          name: Wake Up! — latest app
+          body: |
+            Direct download of the Wake Up! Android app.
+            Tap **WakeUp.apk** below on your phone to install it.
+          files: WakeUp.apk
