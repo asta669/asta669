@@ -304,6 +304,17 @@
       <label class="switch"><input type="checkbox" id="jarvisOn" checked /><span class="slider"></span></label>
     </div>
     <div class="field">
+      <label for="jPersona">Personnalité</label>
+      <select id="jPersona">
+        <option value="gideon">Gideon — anglais, posé 🇬🇧</option>
+        <option value="jarvis">Jarvis — français 🇫🇷</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="jVoice">Voix</label>
+      <select id="jVoice"><option value="">Choix automatique</option></select>
+    </div>
+    <div class="field">
       <label for="jName">Comment m'appeler</label>
       <input type="text" id="jName" placeholder="Monsieur" />
     </div>
@@ -381,6 +392,7 @@
   var snoozeRow = $("snoozeRow"), snoozeBtn = $("snoozeBtn");
   var jarvisOn = $("jarvisOn"), jName = $("jName"), jRoutine = $("jRoutine"),
       jTasks = $("jTasks"), jKey = $("jKey"), briefBtn = $("briefBtn"), jHint = $("jHint");
+  var jPersona = $("jPersona"), jVoice = $("jVoice");
   var jarvisOverlay = $("jarvisOverlay"), briefText = $("briefText"),
       repeatBtn = $("repeatBtn"), briefDoneBtn = $("briefDoneBtn");
   var STORE = "wakeup.settings.v1";
@@ -404,10 +416,13 @@
   }
   loadSettings();
 
+  var savedVoiceName = "";
   function loadJarvis() {
     try {
       var j = JSON.parse(localStorage.getItem(JSTORE) || "{}");
       if (typeof j.on === "boolean") jarvisOn.checked = j.on;
+      if (j.persona) jPersona.value = j.persona;
+      if (j.voice) savedVoiceName = j.voice;
       if (j.name) jName.value = j.name;
       if (j.routine) jRoutine.value = j.routine;
       if (j.tasks) jTasks.value = j.tasks;
@@ -416,11 +431,35 @@
   }
   function saveJarvis() {
     localStorage.setItem(JSTORE, JSON.stringify({
-      on: jarvisOn.checked, name: jName.value, routine: jRoutine.value,
-      tasks: jTasks.value, key: jKey.value
+      on: jarvisOn.checked, persona: jPersona.value, voice: jVoice.value,
+      name: jName.value, routine: jRoutine.value, tasks: jTasks.value, key: jKey.value
     }));
   }
   loadJarvis();
+
+  function isGideon() { return jPersona.value === "gideon"; }
+
+  /* Fill the voice picker with whatever voices this device offers. */
+  function fillVoices() {
+    if (!("speechSynthesis" in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+    var want = isGideon() ? /^en/i : /^fr/i;
+    var keep = jVoice.value || savedVoiceName;
+    jVoice.innerHTML = '<option value="">Choix automatique</option>';
+    voices.forEach(function (v) {
+      if (!want.test(v.lang)) return;
+      var o = document.createElement("option");
+      o.value = v.name;
+      o.textContent = v.name + " (" + v.lang + ")";
+      jVoice.appendChild(o);
+    });
+    if (keep) {
+      for (var i = 0; i < jVoice.options.length; i++) {
+        if (jVoice.options[i].value === keep) { jVoice.value = keep; break; }
+      }
+    }
+  }
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function tick() {
@@ -549,21 +588,39 @@
   /* ---- Jarvis: the spoken morning brief ---- */
   var currentBrief = "";
 
+  function taskList() {
+    return jTasks.value.split("\n").map(function (t) { return t.trim(); })
+      .filter(function (t) { return t.length; });
+  }
+
   function localBrief() {
-    var now = new Date();
+    var now = new Date(), tasks = taskList(), routine = jRoutine.value.trim();
+
+    if (isGideon()) {
+      var nameEn = jName.value.trim() || "Mr. Asta";
+      var timeEn = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      var dayEn = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      var g = "Good morning, " + nameEn + ". The time is " + timeEn + ", and today is " + dayEn + ". ";
+      g += tasks.length
+        ? "On your schedule: " + tasks.join(", ") + ". "
+        : "You have nothing scheduled today. The day is entirely yours. ";
+      if (routine) g += "A reminder of your routine: " + routine + ". ";
+      var endEn = [
+        "All systems are ready when you are. Have an excellent day.",
+        "Everything is prepared. I suggest you begin.",
+        "You are ready. Make it a remarkable day.",
+        "One step at a time, and all will be well. Good morning."
+      ];
+      return g + endEn[now.getDate() % endEn.length];
+    }
+
     var name = jName.value.trim() || "Monsieur";
     var time = now.getHours() + "h" + pad(now.getMinutes());
     var day = now.toLocaleDateString("fr-FR", { weekday: "long" });
-    var routine = jRoutine.value.trim();
-    var tasks = jTasks.value.split("\n").map(function (t) { return t.trim(); })
-      .filter(function (t) { return t.length; });
-
     var s = "Bonjour " + name + ". Il est " + time + ", nous sommes " + day + ". ";
-    if (tasks.length) {
-      s += "Au programme aujourd'hui : " + tasks.join(", ") + ". ";
-    } else {
-      s += "Aucune tâche notée aujourd'hui — la journée est à vous. ";
-    }
+    s += tasks.length
+      ? "Au programme aujourd'hui : " + tasks.join(", ") + ". "
+      : "Aucune tâche notée aujourd'hui — la journée est à vous. ";
     if (routine) s += "N'oubliez pas votre routine : " + routine + ". ";
     var closings = [
       "Debout, la journée vous attend. Excellente journée.",
@@ -575,10 +632,22 @@
   }
 
   function jarvisPrompt() {
+    var now = new Date(), tasks = taskList();
+
+    if (isGideon()) {
+      var nameEn = jName.value.trim() || "Mr. Asta";
+      return "You are Gideon, a refined and composed British AI assistant to " + nameEn + ". " +
+        "Write a short spoken morning briefing (4 to 6 sentences) in English, to be read aloud. " +
+        "Be calm, precise and courteous — never chatty, no lists, no emojis. Address him formally.\n\n" +
+        "Time: " + now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + "\n" +
+        "Date: " + now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + "\n" +
+        "Today's tasks: " + (tasks.length ? tasks.join(", ") : "none") + "\n" +
+        "Routine to encourage: " + (jRoutine.value.trim() || "none") + "\n\n" +
+        "Greet him, state the time and date, note the tasks, encourage the routine, " +
+        "and close with one composed, motivating line.";
+    }
+
     var name = jName.value.trim() || "Monsieur";
-    var now = new Date();
-    var tasks = jTasks.value.split("\n").map(function (t) { return t.trim(); })
-      .filter(function (t) { return t.length; });
     return "Tu es Jarvis, l'assistant personnel de " + name + ". Parle en français, avec élégance et " +
       "bienveillance, en vouvoyant. Rédige un briefing matinal court (4 à 6 phrases), motivant, à lire " +
       "à voix haute : pas de listes, pas d'emojis, un ton naturel et oral.\n\n" +
@@ -633,16 +702,41 @@
     speak(text);
   }
 
+  /* Picks the closest available voice: the user's explicit choice first,
+     otherwise a female voice in the persona's language (Gideon = British). */
+  function pickVoice(voices) {
+    var chosen = jVoice.value;
+    if (chosen) {
+      for (var i = 0; i < voices.length; i++) if (voices[i].name === chosen) return voices[i];
+    }
+    var female = /female|femme|samantha|serena|kate|sonia|libby|amelie|audrey|aurelie|marie|google uk english female/i;
+    var langs = isGideon() ? [/^en-GB/i, /^en/i] : [/^fr-FR/i, /^fr/i];
+    for (var l = 0; l < langs.length; l++) {
+      for (var pass = 0; pass < 2; pass++) {   // pass 0: female-sounding, pass 1: any
+        for (var j = 0; j < voices.length; j++) {
+          var v = voices[j];
+          if (!langs[l].test(v.lang)) continue;
+          if (pass === 0 && !female.test(v.name)) continue;
+          return v;
+        }
+      }
+    }
+    return null;
+  }
+
   function speak(text) {
     if (!("speechSynthesis" in window)) return;
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.lang = "fr-FR"; u.rate = 0.98; u.pitch = 1.0;
-      var voices = window.speechSynthesis.getVoices();
-      for (var i = 0; i < voices.length; i++) {
-        if (/fr[-_]/i.test(voices[i].lang)) { u.voice = voices[i]; break; }
+      if (isGideon()) {
+        // Gideon: measured, composed, faintly formal.
+        u.lang = "en-GB"; u.rate = 0.9; u.pitch = 1.08;
+      } else {
+        u.lang = "fr-FR"; u.rate = 0.98; u.pitch = 1.0;
       }
+      var v = pickVoice(window.speechSynthesis.getVoices());
+      if (v) { u.voice = v; u.lang = v.lang; }
       window.speechSynthesis.speak(u);
     } catch (e) {}
   }
@@ -654,11 +748,22 @@
   briefDoneBtn.addEventListener("click", function () {
     stopSpeaking(); jarvisOverlay.classList.remove("show");
   });
-  [jarvisOn, jName, jRoutine, jTasks, jKey].forEach(function (el) {
+  [jarvisOn, jName, jRoutine, jTasks, jKey, jVoice].forEach(function (el) {
     el.addEventListener("change", saveJarvis);
   });
-  // Voice list loads asynchronously in some browsers.
-  if ("speechSynthesis" in window) { window.speechSynthesis.onvoiceschanged = function () {}; }
+  jPersona.addEventListener("change", function () {
+    jVoice.value = ""; savedVoiceName = "";
+    fillVoices(); saveJarvis();
+    jHint.innerHTML = isGideon()
+      ? "Gideon parle <b>anglais</b>, d'une voix féminine posée. Choisis une voix « UK English Female » si elle est proposée."
+      : "Jarvis parle <b>français</b>. Sans clé, il compose lui-même le briefing, hors-ligne.";
+  });
+
+  // Voice lists load asynchronously in most browsers.
+  if ("speechSynthesis" in window) {
+    fillVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", fillVoices);
+  }
   function nextChallenge() {
     qText.style.display = "none"; taskText.style.display = "none";
     answerEl.style.display = "none"; keysRow.style.display = "none"; tapArea.style.display = "none";
