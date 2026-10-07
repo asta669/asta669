@@ -3,19 +3,23 @@ package com.asta669.wakeup
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.core.content.ContextCompat
+import android.util.Log
 
-/** Fired by AlarmManager at the scheduled time. Starts the ringing service and
- *  re-arms the alarm for the next day so it repeats daily. */
+/** A system alarm delivery can launch the ringing foreground service after the UI is closed. */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        // Start the foreground service that plays the sound and shows the full-screen alarm.
-        val serviceIntent = Intent(context, AlarmService::class.java)
-        ContextCompat.startForegroundService(context, serviceIntent)
-
-        // Re-arm for the next day (daily repeat) if the alarm is still enabled.
-        if (Prefs.isEnabled(context)) {
+        if (intent.action != null && intent.action != AlarmScheduler.ACTION_DAILY_ALARM) return
+        if (!Prefs.isEnabled(context)) return
+        // Re-arm independently, even if Android refuses this occurrence's service start.
+        try {
             AlarmScheduler.schedule(context, Prefs.getHour(context), Prefs.getMinute(context))
+        } catch (error: SecurityException) {
+            Log.w("WakeUpAlarm", "Exact alarm permission must be restored.")
+        }
+        try {
+            AlarmService.startScheduled(context)
+        } catch (error: RuntimeException) {
+            Log.e("WakeUpAlarm", "Android refused the ringing service: ${error.javaClass.simpleName}")
         }
     }
 }

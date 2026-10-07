@@ -52,6 +52,7 @@ class JarvisActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             model = Prefs.getGeminiModel(this)
         ) { text ->
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 brief = text
                 briefView.text = text
                 speak()

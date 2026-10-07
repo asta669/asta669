@@ -10,15 +10,15 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🤵"
-        android:textSize="52sp" />
+        android:text="VOTRE MATIN"
+        android:textSize="12sp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
         android:text="Jarvis"
-        android:textColor="@color/white"
+        android:textColor="@color/text_primary"
         android:textSize="24sp"
         android:textStyle="bold" />
 
@@ -34,7 +34,7 @@
             android:gravity="center"
             android:lineSpacingMultiplier="1.2"
             android:text=""
-            android:textColor="@color/white"
+            android:textColor="@color/text_primary"
             android:textSize="20sp" />
     </ScrollView>
 
@@ -44,7 +44,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="🔊 Répéter"
+        android:text="Écouter à nouveau"
         android:textColor="@color/accent" />
 
     <Button
@@ -52,7 +52,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Bonne journée ☀️"
+        android:text="Commencer ma journée"
         android:textSize="16sp" />
 
 </LinearLayout>

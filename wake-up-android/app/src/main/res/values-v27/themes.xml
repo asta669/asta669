@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.WakeUp" parent="Base.Theme.WakeUp">
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

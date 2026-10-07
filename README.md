@@ -1,30 +1,25 @@
 # Wake Up! pour Android
 
-Application Android native de réveil, écrite en Kotlin. Pour arrêter l'alarme,
-il faut résoudre des défis de calcul. Un briefing vocal Jarvis peut ensuite
-présenter la routine du matin et les rendez-vous du jour.
+Un réveil natif qui vous accompagne jusqu'à la cuisine : associez un QR code,
+programmez l'heure, puis scannez le code pour arrêter la sonnerie.
 
-Le projet se trouve dans [`wake-up-android/`](wake-up-android/).
-Il nécessite Android 8.0 ou une version ultérieure.
+La version 2 ajoute une interface claire aux cartes arrondies, trois sonneries
+originales au volume maximal, le contrôle des autorisations d'alarme et un mode
+**School ON / OFF**. Le briefing vocal Jarvis reste facultatif.
 
-## Installer et utiliser
-
-Consultez le [guide Android](wake-up-android/README.md) pour télécharger un APK,
-autoriser les alarmes et les notifications, puis configurer le réveil et Jarvis.
-Un APK est le fichier d'installation de l'application sur un téléphone Android.
+Le code est dans [`wake-up-android/`](wake-up-android/). Le
+[guide Android](wake-up-android/README.md) explique l'installation, les permissions,
+le QR code et les vérifications à effectuer sur téléphone.
 
 ## Développer
 
-Ouvrez le dossier `wake-up-android` dans Android Studio. La compilation utilise
-Java 17, Gradle 8.7 et le SDK Android 34. Les commandes et les vérifications sur
-appareil sont détaillées dans le [guide Android](wake-up-android/README.md).
+Java 17, Android SDK 34 et Gradle 8.7 (wrapper inclus) :
 
-L'automatisation GitHub est décrite dans
-[`.github/workflows/android.yml`](.github/workflows/android.yml).
-
-## Organisation
-
-```text
-wake-up-android/       Code, ressources et configuration de l'application
-.github/workflows/    Construction de l'APK sur GitHub
+```bash
+cd wake-up-android
+./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon --max-workers=2
 ```
+
+L'APK de test est produit dans `app/build/outputs/apk/debug/app-debug.apk`.
+La [configuration GitHub Actions](.github/workflows/android.yml) exécute les mêmes
+contrôles. La publication d'une release demande un lancement manuel sur `main`.

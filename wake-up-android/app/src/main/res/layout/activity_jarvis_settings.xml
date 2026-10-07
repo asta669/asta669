@@ -15,8 +15,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:text="🤵 Jarvis"
-            android:textColor="@color/white"
+            android:text="Votre assistant."
+            android:textColor="@color/text_primary"
             android:textSize="26sp"
             android:textStyle="bold" />
 
@@ -36,7 +36,7 @@
             android:layout_height="wrap_content"
             android:buttonTint="@color/good"
             android:text="Activer Jarvis après l'alarme"
-            android:textColor="@color/white" />
+            android:textColor="@color/text_primary" />
 
         <CheckBox
             android:id="@+id/useCalendar"
@@ -45,7 +45,7 @@
             android:layout_marginBottom="8dp"
             android:buttonTint="@color/good"
             android:text="Lire mes rendez-vous du jour (Google Agenda)"
-            android:textColor="@color/white" />
+            android:textColor="@color/text_primary" />
 
         <TextView
             android:layout_width="match_parent"
@@ -55,13 +55,14 @@
             android:textColor="@color/muted" />
 
         <EditText
+            android:minHeight="48dp"
             android:id="@+id/nameInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:autofillHints=""
-            android:hint="Monsieur"
+            android:hint="sir"
             android:inputType="textPersonName"
-            android:textColor="@color/white"
+            android:textColor="@color/text_primary"
             android:textColorHint="@color/muted" />
 
         <TextView
@@ -72,6 +73,7 @@
             android:textColor="@color/muted" />
 
         <EditText
+            android:minHeight="48dp"
             android:id="@+id/routineInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,31 +81,32 @@
             android:hint="footing, lecture, écrire sur Substack"
             android:inputType="textMultiLine"
             android:minLines="2"
-            android:textColor="@color/white"
+            android:textColor="@color/text_primary"
             android:textColorHint="@color/muted" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Clé API Gemini (gratuite — aistudio.google.com/apikey)"
+            android:text="Clé Gemini facultative"
             android:textColor="@color/muted" />
 
         <EditText
+            android:minHeight="48dp"
             android:id="@+id/keyInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:autofillHints=""
             android:hint="AIza…"
             android:inputType="textPassword"
-            android:textColor="@color/white"
+            android:textColor="@color/text_primary"
             android:textColorHint="@color/muted" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Laissez vide pour un briefing hors-ligne (sans IA)."
+            android:text="Sans clé : briefing local. Avec une clé : le nom, la routine et les rendez-vous choisis sont transmis à Gemini."
             android:textColor="@color/muted"
             android:textSize="12sp" />
 
@@ -115,13 +118,14 @@
             android:textColor="@color/muted" />
 
         <EditText
+            android:minHeight="48dp"
             android:id="@+id/modelInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:autofillHints=""
             android:hint="gemini-2.0-flash"
             android:inputType="text"
-            android:textColor="@color/white"
+            android:textColor="@color/text_primary"
             android:textColorHint="@color/muted" />
 
         <Button
@@ -130,7 +134,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="▶  Tester Jarvis maintenant" />
+            android:text="Tester le briefing" />
 
         <Button
             android:id="@+id/saveJarvisBtn"

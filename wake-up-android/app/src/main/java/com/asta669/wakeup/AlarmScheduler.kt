@@ -4,65 +4,60 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import java.util.Calendar
+import java.util.TimeZone
 
-/** Schedules / cancels the exact wake-up alarm through the system AlarmManager. */
+/** Daily exact alarm; previews never replace its PendingIntent. */
 object AlarmScheduler {
-
     private const val REQUEST_CODE = 4269
+    internal const val ACTION_DAILY_ALARM = "com.asta669.wakeup.DAILY_ALARM"
+    private const val STATE = "alarm_schedule"
+    private const val NEXT = "next_trigger"
 
-    /** Next time [hour]:[minute] occurs (today if still ahead, otherwise tomorrow). */
-    fun nextTriggerMillis(hour: Int, minute: Int): Long {
-        val now = Calendar.getInstance()
-        val next = Calendar.getInstance().apply {
+    fun nextTriggerMillis(hour: Int, minute: Int): Long =
+        nextTriggerMillis(hour, minute, System.currentTimeMillis(), TimeZone.getDefault())
+
+    internal fun nextTriggerMillis(hour: Int, minute: Int, now: Long, zone: TimeZone): Long {
+        require(hour in 0..23 && minute in 0..59) { "Heure invalide." }
+        val next = Calendar.getInstance(zone).apply {
+            timeInMillis = now
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        if (next.timeInMillis <= now.timeInMillis) {
-            next.add(Calendar.DAY_OF_YEAR, 1)
-        }
+        if (next.timeInMillis <= now) next.add(Calendar.DAY_OF_YEAR, 1)
         return next.timeInMillis
     }
 
-    private fun operation(context: Context): PendingIntent {
-        val intent = Intent(context, AlarmReceiver::class.java)
-        return PendingIntent.getBroadcast(
-            context, REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
+    private fun operation(context: Context, legacy: Boolean = false): PendingIntent = PendingIntent.getBroadcast(
+        context, REQUEST_CODE,
+        Intent(context, AlarmReceiver::class.java).apply { if (!legacy) action = ACTION_DAILY_ALARM },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
-    /** Schedule the alarm for the next occurrence of the given time. */
     fun schedule(context: Context, hour: Int, minute: Int) {
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = nextTriggerMillis(hour, minute)
-
-        // A PendingIntent that opens the app when the user taps the status-bar alarm icon.
-        val show = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // setAlarmClock is the most reliable API: exact, and exempt from Doze/battery saver.
-        val info = AlarmManager.AlarmClockInfo(triggerAt, show)
-        am.setAlarmClock(info, operation(context))
+        val manager = context.getSystemService(AlarmManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !manager.canScheduleExactAlarms()) {
+            throw SecurityException("Autorisez les alarmes exactes dans les réglages Android.")
+        }
+        val trigger = nextTriggerMillis(hour, minute)
+        val show = PendingIntent.getActivity(context, 4268, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        manager.setAlarmClock(AlarmManager.AlarmClockInfo(trigger, show), operation(context))
+        // Replace alarms scheduled by older app versions, which used an actionless intent.
+        manager.cancel(operation(context, legacy = true))
+        context.getSharedPreferences(STATE, Context.MODE_PRIVATE).edit().putLong(NEXT, trigger).apply()
     }
 
-    /** Schedule a one-off alarm [minutes] from now (used by snooze). */
-    fun snooze(context: Context, minutes: Int) {
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = System.currentTimeMillis() + minutes * 60_000L
-        val show = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, show), operation(context))
-    }
+    fun nextScheduledAt(context: Context): Long? =
+        context.getSharedPreferences(STATE, Context.MODE_PRIVATE).getLong(NEXT, 0L).takeIf { it > 0 }
 
     fun cancel(context: Context) {
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        am.cancel(operation(context))
+        val manager = context.getSystemService(AlarmManager::class.java)
+        manager.cancel(operation(context))
+        manager.cancel(operation(context, legacy = true))
+        context.getSharedPreferences(STATE, Context.MODE_PRIVATE).edit().remove(NEXT).apply()
     }
 }

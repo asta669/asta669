@@ -8,27 +8,41 @@ object Prefs {
     private const val K_HOUR = "hour"
     private const val K_MINUTE = "minute"
     private const val K_ENABLED = "enabled"
-    private const val K_DIFFICULTY = "difficulty"
+    private const val K_QR_HASH = "kitchen_qr_hash"
+    private const val K_ALARM_SOUND = "alarm_sound"
 
     private fun sp(c: Context) = c.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
     fun getHour(c: Context) = sp(c).getInt(K_HOUR, 7)
     fun getMinute(c: Context) = sp(c).getInt(K_MINUTE, 0)
     fun isEnabled(c: Context) = sp(c).getBoolean(K_ENABLED, false)
-    /** Number of challenges required to dismiss the alarm. */
-    fun getDifficulty(c: Context) = sp(c).getInt(K_DIFFICULTY, 3)
-
-    fun save(c: Context, hour: Int, minute: Int, difficulty: Int, enabled: Boolean) {
+    fun save(c: Context, hour: Int, minute: Int, enabled: Boolean) {
+        require(hour in 0..23 && minute in 0..59)
         sp(c).edit()
             .putInt(K_HOUR, hour)
             .putInt(K_MINUTE, minute)
-            .putInt(K_DIFFICULTY, difficulty)
+            .remove("difficulty")
             .putBoolean(K_ENABLED, enabled)
             .apply()
     }
 
     fun setEnabled(c: Context, enabled: Boolean) {
         sp(c).edit().putBoolean(K_ENABLED, enabled).apply()
+    }
+
+    fun getQrHash(c: Context): String = sp(c).getString(K_QR_HASH, "") ?: ""
+    fun hasKitchenQr(c: Context): Boolean = getQrHash(c).matches(Regex("[a-f0-9]{64}"))
+    fun setQrHash(c: Context, hash: String) {
+        require(hash.matches(Regex("[a-f0-9]{64}")))
+        sp(c).edit().putString(K_QR_HASH, hash).apply()
+    }
+
+    fun getAlarmSound(c: Context): String =
+        sp(c).getString(K_ALARM_SOUND, "pulse")?.takeIf { it in setOf("pulse", "beacon", "rise") } ?: "pulse"
+
+    fun setAlarmSound(c: Context, sound: String) {
+        require(sound in setOf("pulse", "beacon", "rise"))
+        sp(c).edit().putString(K_ALARM_SOUND, sound).apply()
     }
 
     // ---- Jarvis (spoken morning brief) ----

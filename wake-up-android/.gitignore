@@ -8,3 +8,7 @@
 /captures
 .externalNativeBuild
 .cxx
+*.apk
+*.aab
+*.jks
+*.keystore

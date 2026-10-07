@@ -5,10 +5,14 @@ on:
     paths:
       - 'wake-up-android/**'
       - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'wake-up-android/**'
+      - '.github/workflows/android.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -29,13 +33,20 @@ jobs:
       - name: Install SDK packages
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Generate Gradle wrapper (pinned to 8.7)
-        working-directory: wake-up-android
-        run: gradle wrapper --gradle-version 8.7
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Test, lint and build debug APK
         working-directory: wake-up-android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon --stacktrace
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-validation
+          path: wake-up-android/app/build/reports/
+          if-no-files-found: ignore
 
       - name: Rename APK
         run: cp wake-up-android/app/build/outputs/apk/debug/app-debug.apk WakeUp.apk
@@ -47,8 +58,19 @@ jobs:
           path: WakeUp.apk
           if-no-files-found: error
 
+  release:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested APK
+        uses: actions/download-artifact@v4
+        with:
+          name: WakeUp-debug-apk
+
       - name: Publish APK to a downloadable Release
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-apk

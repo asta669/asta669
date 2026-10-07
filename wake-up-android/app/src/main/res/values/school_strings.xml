@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="school_back">Retour</string>
+    <string name="school_title">School</string>
+    <string name="school_subtitle">Le calme pour apprendre. Votre réveil garde la priorité.</string>
+    <string name="school_on">School ON</string>
+    <string name="school_off">School OFF</string>
+    <string name="school_permissions_title">Le silence, avec votre accord</string>
+    <string name="school_permissions_button">Régler « Ne pas déranger »</string>
+    <string name="school_airplane_help">Android vous demande de changer vous-même le mode avion. Ouvrez les réglages et utilisez son interrupteur. School OFF ne le désactive pas automatiquement.</string>
+    <string name="school_airplane_button">Ouvrir le mode avion</string>
+    <string name="school_priority_help">School ON mémorise vos réglages et coupe les sons ordinaires autorisés. School OFF restaure ces réglages. Le volume des alarmes reste inchangé. Vérifiez le silence avant le cours : certains sons du système peuvent rester audibles.</string>
+</resources>
